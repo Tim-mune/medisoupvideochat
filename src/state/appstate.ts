@@ -1,5 +1,11 @@
 import { create } from "zustand";
 
-interface AppState {}
+interface AppState {
+  joinRoom: (data: { room: string; name: string }) => unknown;
+}
 
-export const useAppState = create<AppState>()((set) => ({}));
+export const useAppState = create<AppState>()((set) => ({
+  joinRoom() {
+    console.log("join room");
+  },
+}));
