@@ -12,19 +12,16 @@ const httpsServer = https.createServer({ key, cert }, app);
 
 const io = new Server(httpsServer, {
   cors: {
-    origin: "https://localhost:3001",
+    origin: "https://localhost:3000",
     methods: ["GET", "POST"],
   },
 });
 
 const { router, worker } = await createWorkers();
 
-// io.on("connection", (socket) => {
-//   console.log("a user connected");
-//   socket.on("getRtpCap", (ack) => {
-//     ack(router.rtpCapabilities);
-//   });
-// });
+io.on("connection", (socket) => {
+  console.log("a user connected");
+});
 
 httpsServer.listen(3001, () =>
   console.log(`Server running on https://localhost:3001`)

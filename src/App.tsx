@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 import { useAppState } from "./state/appstate";
 
@@ -7,7 +7,10 @@ const App = () => {
     name: "",
     room: "",
   });
-  const { joinRoom } = useAppState();
+  const { joinRoom, initSocketIO, socket } = useAppState();
+  useEffect(() => {
+    initSocketIO();
+  }, []);
   return (
     <main className="min-h-screen bg-amber-100 p-6 md:p-12 flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
