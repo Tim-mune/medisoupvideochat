@@ -2,6 +2,7 @@
 
 # Logs
 
+/certs
 logs
 _.log
 npm-debug.log_
