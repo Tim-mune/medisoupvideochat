@@ -1,11 +1,18 @@
 import { FaMicrophone, FaVideo } from "react-icons/fa";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useAppState } from "../state/appstate";
 
 export const Room = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const { createTansport, setLocalStream } = useAppState();
+  const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
+  const {
+    createTansport,
+    setLocalStream,
+    socket,
+    createRecvTransport,
+    device,
+  } = useAppState();
 
   const getUserMedia = async () => {
     try {
@@ -31,6 +38,74 @@ export const Room = () => {
     createTansport();
   }, [localVideoRef.current?.srcObject]);
 
+  // socket?.on("newProducer", async ({ kind, producerId }) => {
+  //   console.log("new producer", producerId);
+  //   const recvTransport = await createRecvTransport();
+  //   console.log("recv trans", recvTransport);
+  //   const consumerParams = await socket.emitWithAck("consume", {
+  //     producerId,
+  //     rtpCapabilities: device?.rtpCapabilities,
+  //     transportId: recvTransport?.id,
+  //   });
+  //   const consumer = await recvTransport?.consume({
+  //     id: consumerParams.id,
+  //     producerId: consumerParams.producerId,
+  //     kind: consumerParams.kind,
+  //     rtpParameters: consumerParams.rtpParameters,
+  //   });
+  //   // @ts-ignore
+  //   const stream = new MediaStream([consumer?.track]);
+  //   // @ts-ignore
+  //   setRemoteStreams((prev) => [...prev, new MediaStream([consumer.track])]);
+  //   console.log(stream);
+  // });
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewProducer = async ({ producerId, kind }: any) => {
+      if (!device) return;
+      // create or reuse a recv transport
+      const recvTransport = await createRecvTransport();
+      if (!recvTransport) {
+        console.error("Failed to create recv transport");
+        return;
+      }
+
+      // ask server for consumer params
+      const consumerParams = await socket.emitWithAck("consume", {
+        producerId,
+        rtpCapabilities: device.rtpCapabilities,
+        transportId: recvTransport.id,
+      });
+
+      if (consumerParams?.error) {
+        console.error("cannot consume:", consumerParams.error);
+        return;
+      }
+
+      // create the consumer on the transport
+      const consumer = await recvTransport.consume({
+        id: consumerParams.id,
+        producerId: consumerParams.producerId,
+        kind: consumerParams.kind,
+        rtpParameters: consumerParams.rtpParameters,
+      });
+
+      // make stream and add to state
+      const stream = new MediaStream();
+      stream.addTrack(consumer.track);
+
+      setRemoteStreams((prev) => [...prev, stream]);
+    };
+
+    socket.on("newProducer", handleNewProducer);
+
+    return () => {
+      socket.off("newProducer", handleNewProducer);
+    };
+  }, [socket, device, createRecvTransport]);
+
   return (
     <section className="min-h-screen flex flex-col justify-between bg-base-100 p-4 md:p-6">
       <div className="w-full max-w-5xl  h-[60vh] mx-auto aspect-video rounded-xl overflow-hidden shadow-xl relative">
@@ -47,7 +122,7 @@ export const Room = () => {
         </span>
       </div>
 
-      <div className="w-full  h-[20vh] max-w-5xl mx-auto mt-4 flex gap-4 overflow-x-auto pb-2">
+      {/* <div className="w-full  h-[20vh] max-w-5xl mx-auto mt-4 flex gap-4 overflow-x-auto pb-2">
         {[...Array(4)].map((_, index) => (
           <div
             key={index}
@@ -63,6 +138,18 @@ export const Room = () => {
               Speaker {index + 1}
             </span>
           </div>
+        ))}
+      </div> */}
+      <div className="w-full  h-[20vh] max-w-5xl mx-auto mt-4 flex gap-4 overflow-x-auto pb-2">
+        {remoteStreams.map((stream, i) => (
+          <video
+            key={i}
+            // @ts-ignore
+            srcObject={stream}
+            autoPlay
+            playsInline
+            className="w-full border border-gray-300 h-full object-cover"
+          />
         ))}
       </div>
 

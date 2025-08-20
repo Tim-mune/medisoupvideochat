@@ -14,6 +14,7 @@ interface AppState {
   setLocalStream: (stream: MediaStream) => void;
   initSocketIO: () => Socket;
   createTansport: () => void;
+  createRecvTransport: () => Promise<Transport | undefined>;
 }
 
 export const useAppState = create<AppState>((set, get) => ({
@@ -72,15 +73,57 @@ export const useAppState = create<AppState>((set, get) => ({
       toast.error("Server Failed WebRTC Transport");
     }
     const transport = device?.createSendTransport(transportParams);
-    transport?.on("connect", ({ dtlsParameters }, callback, errorback) =>
-      console.log(`connected!!`, dtlsParameters)
+    transport?.on(
+      "connect",
+      async ({ dtlsParameters }, callback, errorback) => {
+        const transportId = await socket.emitWithAck("connectTransport", {
+          transportId: transport.id,
+          dtlsParameters,
+        });
+        callback();
+        console.log(`connected!!`, transportId);
+      }
     );
-    transport?.on("produce", ({ kind, rtpParameters }, callback, errorback) =>
-      console.log(`produce`, kind, rtpParameters)
+    transport?.on(
+      "produce",
+      async ({ kind, rtpParameters }, callback, errorback) => {
+        const transportId = await socket.emitWithAck("produce", {
+          kind,
+          rtpParameters,
+          transportId: transport.id,
+        });
+        console.log("transport id producer", transportId);
+        callback({ id: transportId });
+      }
     );
     set({ transport });
     const tracks = localStream?.getTracks();
     tracks?.forEach(async (track) => await transport?.produce({ track }));
     console.log("send transport created successfully!", transport);
+  },
+
+  async createRecvTransport() {
+    const { device, socket } = get();
+    if (!socket || !device) return;
+
+    const transportParams = await socket.emitWithAck("createTransport");
+    const recvTransport = device.createRecvTransport(transportParams);
+    recvTransport.on(
+      "connect",
+      async ({ dtlsParameters }, callback, errorback) => {
+        console.log("recv transport dtls params", dtlsParameters);
+        try {
+          await socket.emitWithAck("connectTransport", {
+            transportId: recvTransport.id,
+            dtlsParameters,
+          });
+          callback();
+        } catch (err) {
+          // errorback(err);
+        }
+      }
+    );
+
+    return recvTransport;
   },
 }));

@@ -7,7 +7,7 @@ import { JoinRoom } from "./pages/JoinRoom";
 import { Room } from "./pages/Room";
 import { Toaster } from "react-hot-toast";
 const App = () => {
-  const { joinRoom, initSocketIO, socket } = useAppState();
+  const { initSocketIO } = useAppState();
 
   useEffect(() => {
     initSocketIO();
