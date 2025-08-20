@@ -24,6 +24,7 @@ export class Client {
       listenInfos: [{ ip: "127.0.0.1", announcedIp: "qqqqq", protocol: "udp" }],
       initialAvailableOutgoingBitrate: 5000000,
     });
+    this.transports.set(transport.id, transport);
     transport.setMaxIncomingBitrate(5000000);
     const clientParams = {
       id: transport.id,
@@ -40,6 +41,9 @@ export class Client {
 
   addConsumer(consumer: Consumer) {
     this.consumers.set(consumer.id, consumer);
+  }
+  getTransports() {
+    return this.transports;
   }
 
   // close() {

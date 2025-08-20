@@ -13,6 +13,10 @@ export class Room {
     return [...this.clients.values()];
   }
 
+  // getClient(name: string) {
+  //   return this.clients.get(name)?.getTransports();
+  // }
+
   addClient(userName: string, client: Client) {
     this.clients.set(userName, client);
   }
